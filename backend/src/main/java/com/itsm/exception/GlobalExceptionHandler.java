@@ -23,6 +23,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(errors);
     }
 
+    @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
+    public ResponseEntity<String> handleAuthenticationException(org.springframework.security.core.AuthenticationException ex) {
+        return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).body("Authentication failed: " + ex.getMessage());
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<String> handleGeneralException(Exception ex) {
         return ResponseEntity.internalServerError().body("An unexpected error occurred: " + ex.getMessage());

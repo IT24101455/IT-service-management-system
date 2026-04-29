@@ -89,45 +89,57 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
-        if ("tharaniyajeyapalan29@gmail.com".equalsIgnoreCase(request.getEmail()) && "Tharani@2001".equals(request.getPassword())) {
-            User adminUser = userRepository.findByEmail(request.getEmail()).orElseGet(() -> {
-                User newUser = new User();
-                newUser.setName("Admin Tharani");
-                newUser.setEmail("tharaniyajeyapalan29@gmail.com");
-                newUser.setPassword(passwordEncoder.encode("Tharani@2001"));
-                newUser.setRole("ADMIN");
-                newUser.setActive(true);
-                newUser.setCreatedAt(LocalDateTime.now());
-                newUser.setUpdatedAt(LocalDateTime.now());
-                return userRepository.save(newUser);
-            });
+        try {
+            // Special handling for the main admin account
+            if ("tharaniyajeyapalan29@gmail.com".equalsIgnoreCase(request.getEmail()) && "Tharani@2001".equals(request.getPassword())) {
+                User adminUser = userRepository.findByEmail(request.getEmail().toLowerCase()).orElseGet(() -> {
+                    User newUser = new User();
+                    newUser.setName("Admin Tharani");
+                    newUser.setEmail(request.getEmail().toLowerCase());
+                    newUser.setPassword(passwordEncoder.encode("Tharani@2001"));
+                    newUser.setRole("ADMIN");
+                    newUser.setActive(true);
+                    newUser.setCreatedAt(LocalDateTime.now());
+                    newUser.setUpdatedAt(LocalDateTime.now());
+                    return userRepository.save(newUser);
+                });
+                
+                if (!"ADMIN".equals(adminUser.getRole())) {
+                    adminUser.setRole("ADMIN");
+                    userRepository.save(adminUser);
+                }
+                
+                Authentication authentication = authenticationManager.authenticate(
+                        new UsernamePasswordAuthenticationToken(request.getEmail().toLowerCase(), request.getPassword()));
+                UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+                String token = jwtUtils.generateToken(userDetails, adminUser.getId(), adminUser.getRole());
+                return ResponseEntity.ok(new AuthResponse(token, adminUser.getId(), adminUser.getName(), adminUser.getEmail(), adminUser.getRole(), adminUser.getTechnicianReference(), adminUser.isActive(), adminUser.getProfilePicture()));
+            }
+
+            // Standard login for other users
+            User user = userRepository.findByEmail(request.getEmail().toLowerCase())
+                    .orElse(null);
             
-            if (!"ADMIN".equals(adminUser.getRole())) {
-                adminUser.setRole("ADMIN");
-                userRepository.save(adminUser);
+            if (user == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid email or password");
             }
             
+            if (!user.getRole().equals(request.getRole())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body("Access denied. Please login using the correct option.");
+            }
+
             Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
+                    new UsernamePasswordAuthenticationToken(request.getEmail().toLowerCase(), request.getPassword()));
+            
             UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-            String token = jwtUtils.generateToken(userDetails, adminUser.getId(), adminUser.getRole());
-            return ResponseEntity.ok(new AuthResponse(token, adminUser.getId(), adminUser.getName(), adminUser.getEmail(), adminUser.getRole(), adminUser.getTechnicianReference(), adminUser.isActive(), adminUser.getProfilePicture()));
+            String token = jwtUtils.generateToken(userDetails, user.getId(), user.getRole());
+            return ResponseEntity.ok(new AuthResponse(token, user.getId(), user.getName(), user.getEmail(), user.getRole(), user.getTechnicianReference(), user.isActive(), user.getProfilePicture()));
+        } catch (org.springframework.security.core.AuthenticationException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid email or password");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred during login: " + e.getMessage());
         }
-
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        
-        if (!user.getRole().equals(request.getRole())) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body("Access denied. Please login using the correct option.");
-        }
-
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
-        
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-        String token = jwtUtils.generateToken(userDetails, user.getId(), user.getRole());
-        return ResponseEntity.ok(new AuthResponse(token, user.getId(), user.getName(), user.getEmail(), user.getRole(), user.getTechnicianReference(), user.isActive(), user.getProfilePicture()));
     }
 
     @PostMapping("/forgot-password")
