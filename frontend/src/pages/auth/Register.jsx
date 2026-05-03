@@ -40,6 +40,7 @@ export default function Register() {
     };
     const [loading, setLoading] = useState(false);
     const [passwordError, setPasswordError] = useState('');
+    const [error, setError] = useState('');
 
     useEffect(() => {
         let interval;
@@ -75,25 +76,26 @@ export default function Register() {
 
     const handleSendOtp = async (e) => {
         if (e) e.preventDefault();
+        setError('');
         
-        const error = validatePassword(form.password);
-        if (error) {
-            setPasswordError(error);
+        const errorMsg = validatePassword(form.password);
+        if (errorMsg) {
+            setPasswordError(errorMsg);
             return;
         }
         setPasswordError('');
 
         if (form.phone && !validatePhone(form.phone)) {
-            toast.error('Invalid Sri Lankan phone number. Use 07XXXXXXXX format.');
+            setError('Invalid Sri Lankan phone number. Use 07XXXXXXXX format.');
             return;
         }
 
         if (form.password !== form.confirmPassword) {
-            toast.error('Passwords do not match');
+            setError('Passwords do not match');
             return;
         }
         if (!form.province || !form.district) {
-            toast.error('Province and District are required');
+            setError('Province and District are required');
             return;
         }
 
@@ -104,7 +106,7 @@ export default function Register() {
         }
 
         if (selectedRole === 'TECHNICIAN' && (!form.nicFrontUrl || !form.nicBackUrl)) {
-            toast.error('NIC front and back photos are required for technicians');
+            setError('NIC front and back photos are required for technicians');
             return;
         }
 
@@ -117,7 +119,7 @@ export default function Register() {
             setTimer(300);
             setCanResend(false);
         } catch (err) {
-            toast.error(err.response?.data || 'Failed to send OTP');
+            setError(err.response?.data || 'Failed to send OTP');
         } finally {
             setLoading(false);
         }
@@ -125,13 +127,14 @@ export default function Register() {
 
     const handleResendOtp = async () => {
         setLoading(true);
+        setError('');
         try {
             await sendOtp({ email: form.email });
             toast.success('OTP resent successfully');
             setTimer(300);
             setCanResend(false);
         } catch (err) {
-            toast.error(err.response?.data || 'Failed to resend OTP');
+            setError(err.response?.data || 'Failed to resend OTP');
         } finally {
             setLoading(false);
         }
@@ -139,8 +142,9 @@ export default function Register() {
 
     const handleFinalRegister = async (e) => {
         e.preventDefault();
+        setError('');
         if (!otp) {
-            toast.error('Please enter the OTP');
+            setError('Please enter the OTP');
             return;
         }
 
@@ -154,15 +158,13 @@ export default function Register() {
             toast.success('Account created successfully!');
             navigate(`/login/${selectedRole}`);
         } catch (err) {
-            toast.error(err.response?.data || 'Registration failed');
+            setError(err.response?.data || 'Registration failed');
         } finally {
             setLoading(false);
         }
     };
 
-    // --- Sub-Components for steps ---
-
-    const RoleSelection = () => (
+    if (!selectedRole) return (
         <AuthLayout 
             title="Create Account" 
             subtitle="Are you registering as a User or a Technician?"
@@ -200,11 +202,29 @@ export default function Register() {
         </AuthLayout>
     );
 
-    const OtpVerification = () => (
+    if (step === 2) return (
         <AuthLayout 
             title="Verify Email" 
             subtitle={`We've sent a 6-digit OTP to ${form.email}`}
         >
+            {error && (
+                <div style={{ 
+                    background: '#fef2f2', 
+                    color: '#dc2626', 
+                    padding: '12px 16px', 
+                    borderRadius: '10px', 
+                    fontSize: '14px', 
+                    fontWeight: '600',
+                    marginBottom: '20px',
+                    border: '1px solid #fee2e2',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px'
+                }}>
+                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#dc2626' }} />
+                    {error}
+                </div>
+            )}
             <form onSubmit={handleFinalRegister}>
                 <div className="form-group">
                     <label className="form-label">Enter OTP Code</label>
@@ -215,6 +235,7 @@ export default function Register() {
                         onChange={e => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                         required
                         style={{ textAlign: 'center', fontSize: 24, letterSpacing: 8, height: 64, borderRadius: 12 }}
+                        autoFocus
                     />
                 </div>
 
@@ -254,9 +275,6 @@ export default function Register() {
         </AuthLayout>
     );
 
-    if (!selectedRole) return <RoleSelection />;
-    if (step === 2) return <OtpVerification />;
-
     // Main Registration Form
     return (
         <AuthLayout 
@@ -275,6 +293,24 @@ export default function Register() {
             </button>
 
             <form onSubmit={handleSendOtp}>
+                {error && (
+                    <div style={{ 
+                        background: '#fef2f2', 
+                        color: '#dc2626', 
+                        padding: '12px 16px', 
+                        borderRadius: '10px', 
+                        fontSize: '14px', 
+                        fontWeight: '600',
+                        marginBottom: '20px',
+                        border: '1px solid #fee2e2',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px'
+                    }}>
+                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#dc2626' }} />
+                        {error}
+                    </div>
+                )}
                 <div className="form-row">
                     <div className="form-group">
                         <label className="form-label">Full Name</label>

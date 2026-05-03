@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { forgotPassword, resetPassword } from '../../api/api';
 import { toast } from 'react-toastify';
-import { Mail, KeyRound, Lock, ArrowRight, ArrowLeft } from 'lucide-react';
-import logo from '../../assets/logo.png';
+import { Mail, KeyRound, Lock, ArrowRight, ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import AuthLayout from './AuthLayout';
 
 export default function ForgotPassword() {
     const navigate = useNavigate();
@@ -17,6 +17,8 @@ export default function ForgotPassword() {
     const [confirmPassword, setConfirmPassword] = useState('');
 
     const [loading, setLoading] = useState(false);
+    const [showPw, setShowPw] = useState(false);
+    const [showConfirmPw, setShowConfirmPw] = useState(false);
 
     const handleRequestOtp = async (e) => {
         e.preventDefault();
@@ -43,7 +45,7 @@ export default function ForgotPassword() {
         try {
             await resetPassword({ email, otp, newPassword });
             toast.success('Password reset successfully!');
-            navigate('/login/user'); // Assuming mostly users forget. They can click AuthChoice if technician.
+            navigate('/login/user'); 
         } catch (err) {
             toast.error(err.response?.data || 'Failed to reset password. Invalid OTP?');
         } finally {
@@ -52,105 +54,102 @@ export default function ForgotPassword() {
     };
 
     return (
-        <div className="auth-container">
-            <div className="auth-box">
-                <div style={{ textAlign: 'center', marginBottom: 30 }}>
-                    <img src={logo} alt="TechNova" style={{ width: 60, height: 60, marginBottom: 15 }} />
-                    <h2 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text)' }}>
-                        {step === 1 ? 'Reset Password' : 'Create New Password'}
-                    </h2>
-                    <p style={{ color: 'var(--text-muted)', marginTop: 5 }}>
-                        {step === 1
-                            ? 'Enter your email address and we will send you a 6-digit OTP.'
-                            : `Enter the OTP sent to ${email} and your new password.`}
-                    </p>
-                </div>
+        <AuthLayout 
+            title={step === 1 ? 'Reset Password' : 'Create New Password'}
+            subtitle={step === 1
+                ? 'Enter your email address and we will send you a 6-digit OTP.'
+                : `Enter the OTP sent to ${email} and your new password.`}
+        >
+            {step === 1 && (
+                <form onSubmit={handleRequestOtp}>
+                    <div className="form-group">
+                        <label className="form-label">Email Address</label>
+                        <input
+                            type="email"
+                            className="form-control"
+                            placeholder="Enter your registered email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            required
+                        />
+                    </div>
+                    <button type="submit" className="btn btn-primary btn-lg" style={{ width: '100%', borderRadius: '10px' }} disabled={loading}>
+                        {loading ? 'Sending...' : 'Send OTP'}
+                        {!loading && <ArrowRight size={18} style={{ marginLeft: 8 }} />}
+                    </button>
+                </form>
+            )}
 
-                {step === 1 && (
-                    <form onSubmit={handleRequestOtp}>
-                        <div className="form-group" style={{ marginBottom: 20 }}>
-                            <label className="form-label" style={{ fontWeight: 600 }}>Email Address</label>
-                            <div className="input-with-icon">
-                                <Mail size={18} className="input-icon" />
-                                <input
-                                    type="email"
-                                    className="form-control"
-                                    placeholder="Enter your registered email"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    required
-                                    style={{ height: 48 }}
-                                />
-                            </div>
+            {step === 2 && (
+                <form onSubmit={handleResetPassword}>
+                    <div className="form-group">
+                        <label className="form-label">OTP Code</label>
+                        <input
+                            type="text"
+                            className="form-control"
+                            placeholder="Enter 6-digit OTP"
+                            value={otp}
+                            onChange={(e) => setOtp(e.target.value)}
+                            required
+                        />
+                    </div>
+
+                    <div className="form-group">
+                        <label className="form-label">New Password</label>
+                        <div style={{ position: 'relative' }}>
+                            <input
+                                type={showPw ? 'text' : 'password'}
+                                className="form-control"
+                                placeholder="Enter new password"
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
+                                required
+                                style={{ paddingRight: 42 }}
+                            />
+                            <button type="button" onClick={() => setShowPw(!showPw)}
+                                style={{
+                                    position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+                                    background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)'
+                                }}>
+                                {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                            </button>
                         </div>
-                        <button type="submit" className="btn btn-primary" style={{ width: '100%', height: 48, fontSize: 16 }} disabled={loading}>
-                            {loading ? 'Sending...' : 'Send OTP'} <ArrowRight size={18} />
-                        </button>
-                    </form>
-                )}
+                    </div>
 
-                {step === 2 && (
-                    <form onSubmit={handleResetPassword}>
-                        <div className="form-group" style={{ marginBottom: 20 }}>
-                            <label className="form-label" style={{ fontWeight: 600 }}>OTP Code</label>
-                            <div className="input-with-icon">
-                                <KeyRound size={18} className="input-icon" />
-                                <input
-                                    type="text"
-                                    className="form-control"
-                                    placeholder="Enter 6-digit OTP"
-                                    value={otp}
-                                    onChange={(e) => setOtp(e.target.value)}
-                                    required
-                                    style={{ height: 48 }}
-                                />
-                            </div>
+                    <div className="form-group">
+                        <label className="form-label">Confirm New Password</label>
+                        <div style={{ position: 'relative' }}>
+                            <input
+                                type={showConfirmPw ? 'text' : 'password'}
+                                className="form-control"
+                                placeholder="Confirm new password"
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                required
+                                style={{ paddingRight: 42 }}
+                            />
+                            <button type="button" onClick={() => setShowConfirmPw(!showConfirmPw)}
+                                style={{
+                                    position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+                                    background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)'
+                                }}>
+                                {showConfirmPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                            </button>
                         </div>
+                    </div>
 
-                        <div className="form-group" style={{ marginBottom: 20 }}>
-                            <label className="form-label" style={{ fontWeight: 600 }}>New Password</label>
-                            <div className="input-with-icon">
-                                <Lock size={18} className="input-icon" />
-                                <input
-                                    type="password"
-                                    className="form-control"
-                                    placeholder="Enter new password"
-                                    value={newPassword}
-                                    onChange={(e) => setNewPassword(e.target.value)}
-                                    required
-                                    style={{ height: 48 }}
-                                />
-                            </div>
-                        </div>
+                    <button type="submit" className="btn btn-primary btn-lg" style={{ width: '100%', borderRadius: '10px' }} disabled={loading}>
+                        {loading ? 'Resetting...' : 'Reset Password'}
+                        {!loading && <ArrowRight size={18} style={{ marginLeft: 8 }} />}
+                    </button>
+                </form>
+            )}
 
-                        <div className="form-group" style={{ marginBottom: 20 }}>
-                            <label className="form-label" style={{ fontWeight: 600 }}>Confirm New Password</label>
-                            <div className="input-with-icon">
-                                <Lock size={18} className="input-icon" />
-                                <input
-                                    type="password"
-                                    className="form-control"
-                                    placeholder="Confirm new password"
-                                    value={confirmPassword}
-                                    onChange={(e) => setConfirmPassword(e.target.value)}
-                                    required
-                                    style={{ height: 48 }}
-                                />
-                            </div>
-                        </div>
-
-                        <button type="submit" className="btn btn-primary" style={{ width: '100%', height: 48, fontSize: 16 }} disabled={loading}>
-                            {loading ? 'Resetting...' : 'Reset Password'} <ArrowRight size={18} />
-                        </button>
-                    </form>
-                )}
-
-                <div style={{ textAlign: 'center', marginTop: 20 }}>
-                    <Link to="/auth-choice" style={{ color: 'var(--text-muted)', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
-                        <ArrowLeft size={16} /> Back to Login
-                    </Link>
-                </div>
+            <div style={{ textAlign: 'center', marginTop: 32, fontSize: 14, color: 'var(--text-muted)' }}>
+                <Link to="/auth-choice" style={{ color: 'var(--auth-blue-primary)', fontWeight: 700, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+                    <ArrowLeft size={16} /> Back to Login
+                </Link>
             </div>
-        </div>
+        </AuthLayout>
     );
 }

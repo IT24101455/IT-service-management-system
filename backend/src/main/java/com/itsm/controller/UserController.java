@@ -6,12 +6,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.List;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.Authentication;
 
 @RestController
 @RequestMapping("/api/users")
@@ -24,57 +25,68 @@ public class UserController {
     @GetMapping
     public ResponseEntity<List<User>> getAllUsers() {
         List<User> users = userRepository.findAll();
-        users.forEach(u -> u.setPassword(null)); // hide password
+        redactSensitiveInfo(users);
         return ResponseEntity.ok(users);
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<User> getUserById(@PathVariable String id) {
         return userRepository.findById(id).map(u -> {
-            u.setPassword(null);
+            redactSensitiveInfo(java.util.Collections.singletonList(u));
             return ResponseEntity.ok(u);
         }).orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/role/{role}")
-    public ResponseEntity<List<User>> getUsersByRole(@PathVariable String role, @RequestParam(required = false) Boolean activeOnly) {
+    public ResponseEntity<List<User>> getUsersByRole(@PathVariable String role,
+            @RequestParam(required = false) Boolean activeOnly) {
         List<User> users;
         if (Boolean.TRUE.equals(activeOnly)) {
             users = userRepository.findByRoleAndActive(role.toUpperCase(), true);
         } else {
             users = userRepository.findByRole(role.toUpperCase());
         }
-        users.forEach(u -> u.setPassword(null));
+        redactSensitiveInfo(users);
         return ResponseEntity.ok(users);
     }
 
     @GetMapping("/technicians/available")
     public ResponseEntity<List<User>> getAvailableTechnicians() {
         List<User> technicians = userRepository.findByRoleAndActive("TECHNICIAN", true);
-        technicians.forEach(t -> t.setPassword(null));
+        redactSensitiveInfo(technicians);
         return ResponseEntity.ok(technicians);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<?> updateUser(@PathVariable String id, @RequestBody User updated) {
         return userRepository.findById(id).map(user -> {
-            if (updated.getName() != null) user.setName(updated.getName());
+            if (updated.getName() != null)
+                user.setName(updated.getName());
             if (updated.getPhone() != null) {
                 if (!updated.getPhone().matches("^(?:0|\\+94|94)7[0-9]{8}$")) {
                     // Return custom error response for invalid phone
-                    return ResponseEntity.badRequest().body(null); 
+                    return ResponseEntity.badRequest().body(null);
                 }
                 user.setPhone(updated.getPhone());
             }
-            if (updated.getDepartment() != null) user.setDepartment(updated.getDepartment());
-            if (updated.getProvince() != null) user.setProvince(updated.getProvince());
-            if (updated.getDistrict() != null) user.setDistrict(updated.getDistrict());
-            if (updated.getRole() != null) user.setRole(updated.getRole());
-            if (updated.getSpecialization() != null) user.setSpecialization(updated.getSpecialization());
-            if (updated.getExperienceYears() != null) user.setExperienceYears(updated.getExperienceYears());
-            if (updated.getWorkingDays() != null) user.setWorkingDays(updated.getWorkingDays());
-            if (updated.getWorkingStartTime() != null) user.setWorkingStartTime(updated.getWorkingStartTime());
-            if (updated.getWorkingEndTime() != null) user.setWorkingEndTime(updated.getWorkingEndTime());
+            if (updated.getDepartment() != null)
+                user.setDepartment(updated.getDepartment());
+            if (updated.getProvince() != null)
+                user.setProvince(updated.getProvince());
+            if (updated.getDistrict() != null)
+                user.setDistrict(updated.getDistrict());
+            if (updated.getRole() != null)
+                user.setRole(updated.getRole());
+            if (updated.getSpecialization() != null)
+                user.setSpecialization(updated.getSpecialization());
+            if (updated.getExperienceYears() != null)
+                user.setExperienceYears(updated.getExperienceYears());
+            if (updated.getWorkingDays() != null)
+                user.setWorkingDays(updated.getWorkingDays());
+            if (updated.getWorkingStartTime() != null)
+                user.setWorkingStartTime(updated.getWorkingStartTime());
+            if (updated.getWorkingEndTime() != null)
+                user.setWorkingEndTime(updated.getWorkingEndTime());
             user.setActive(updated.isActive());
             user.setUpdatedAt(LocalDateTime.now());
             User saved = userRepository.save(user);
@@ -108,15 +120,16 @@ public class UserController {
                 if (file.isEmpty()) {
                     return ResponseEntity.badRequest().body("File is empty");
                 }
-                
+
                 String fileUrl = cloudinaryService.uploadFile(file, "profiles");
                 user.setProfilePicture(fileUrl);
                 user.setUpdatedAt(LocalDateTime.now());
                 userRepository.save(user);
-                
+
                 return ResponseEntity.ok(java.util.Map.of("url", fileUrl));
             } catch (Exception e) {
-                return ResponseEntity.internalServerError().body(java.util.Map.of("error", "Could not upload file to Cloudinary: " + e.getMessage()));
+                return ResponseEntity.internalServerError()
+                        .body(java.util.Map.of("error", "Could not upload file to Cloudinary: " + e.getMessage()));
             }
         }).orElse(ResponseEntity.notFound().build());
     }
@@ -134,11 +147,11 @@ public class UserController {
                     Files.deleteIfExists(filePath);
                     System.out.println("Deleted file: " + filePath);
                 }
-                
+
                 user.setProfilePicture(null);
                 user.setUpdatedAt(LocalDateTime.now());
                 userRepository.save(user);
-                
+
                 System.out.println("Profile picture record cleared for user: " + id);
                 return ResponseEntity.ok("Profile picture removed");
             } catch (Exception e) {
@@ -148,5 +161,20 @@ public class UserController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
-}
+    private void redactSensitiveInfo(List<User> users) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAdmin = auth != null && auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ADMIN"));
 
+        users.forEach(u -> {
+            u.setPassword(null); // Always hide password
+            if (!isAdmin) {
+                // If not admin, hide NIC details of technicians
+                if ("TECHNICIAN".equals(u.getRole())) {
+                    u.setNicFrontUrl(null);
+                    u.setNicBackUrl(null);
+                }
+            }
+        });
+    }
+}

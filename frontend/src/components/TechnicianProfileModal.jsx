@@ -1,7 +1,10 @@
-import { Award, MapPin, Mail, Calendar, Briefcase, ExternalLink, X } from 'lucide-react';
+import { Award, MapPin, Mail, Calendar, Briefcase, ExternalLink, X, Shield } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
-export default function TechnicianProfileModal({ isOpen, onClose, technician, onMessage }) {
+export default function TechnicianProfileModal({ isOpen, onClose, technician, onMessage, onToggleActive }) {
+    const { user } = useAuth();
     if (!isOpen || !technician) return null;
+    const isAdmin = user?.role === 'ADMIN';
 
     return (
         <div className="modal-overlay" onClick={onClose} style={{ zIndex: 1100 }}>
@@ -138,7 +141,56 @@ export default function TechnicianProfileModal({ isOpen, onClose, technician, on
                         </div>
                     </div>
 
+                    {/* NIC Verification Section - ADMIN ONLY */}
+                    {isAdmin && (
+                        <div>
+                            <h3 style={{ fontSize: '18px', fontWeight: '800', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Shield size={20} style={{ color: 'var(--primary)' }} />
+                                Identity Verification (NIC)
+                            </h3>
+                            
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                {technician.nicFrontUrl ? (
+                                    <div style={{ background: 'var(--bg)', padding: '12px', borderRadius: '16px', border: '1px solid var(--border-light)' }}>
+                                        <p style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>Front Side</p>
+                                        <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', height: '120px', background: '#eee' }}>
+                                            <img src={technician.nicFrontUrl} alt="NIC Front" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            <a href={technician.nicFrontUrl} target="_blank" rel="noopener noreferrer" style={{ position: 'absolute', bottom: 8, right: 8, background: 'rgba(0,0,0,0.6)', color: 'white', padding: '4px 8px', borderRadius: '6px', fontSize: '10px', textDecoration: 'none' }}>View Full</a>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div style={{ background: 'var(--bg)', padding: '24px', borderRadius: '16px', border: '1px dashed var(--border)', textAlign: 'center' }}>
+                                        <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Front Side Missing</p>
+                                    </div>
+                                )}
+
+                                {technician.nicBackUrl ? (
+                                    <div style={{ background: 'var(--bg)', padding: '12px', borderRadius: '16px', border: '1px solid var(--border-light)' }}>
+                                        <p style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>Back Side</p>
+                                        <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', height: '120px', background: '#eee' }}>
+                                            <img src={technician.nicBackUrl} alt="NIC Back" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            <a href={technician.nicBackUrl} target="_blank" rel="noopener noreferrer" style={{ position: 'absolute', bottom: 8, right: 8, background: 'rgba(0,0,0,0.6)', color: 'white', padding: '4px 8px', borderRadius: '6px', fontSize: '10px', textDecoration: 'none' }}>View Full</a>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div style={{ background: 'var(--bg)', padding: '24px', borderRadius: '16px', border: '1px dashed var(--border)', textAlign: 'center' }}>
+                                        <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Back Side Missing</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                        {isAdmin && onToggleActive && (
+                            <button 
+                                className={`btn ${technician.active ? 'btn-outline-danger' : 'btn-outline-success'}`}
+                                onClick={() => onToggleActive(technician)}
+                                style={{ borderRadius: '12px' }}
+                            >
+                                {technician.active ? 'Deactivate Account' : 'Activate Account'}
+                            </button>
+                        )}
                         <button className="btn btn-primary" onClick={() => {
                             onClose();
                             if (onMessage) onMessage(technician);

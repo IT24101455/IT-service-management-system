@@ -12,6 +12,7 @@ export default function Login() {
     const [form, setForm] = useState({ email: '', password: '' });
     const [showPw, setShowPw] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
     const { loginUser } = useAuth();
     const navigate = useNavigate();
 
@@ -23,6 +24,7 @@ export default function Login() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
+        setError('');
         try {
             const res = await login({ ...form, role: selectedRole });
             loginUser(res.data);
@@ -32,7 +34,9 @@ export default function Login() {
                     : '/user/dashboard';
             navigate(redirect);
         } catch (err) {
-            toast.error(err.response?.data || 'Invalid email or password');
+            const msg = err.response?.data || 'Invalid email or password';
+            setError(msg);
+            toast.error(msg);
         } finally {
             setLoading(false);
         }
@@ -43,6 +47,25 @@ export default function Login() {
             title="Welcome back" 
             subtitle={`Please enter your details to sign in as ${selectedRole.toLowerCase()}.`}
         >
+
+            {error && (
+                <div style={{ 
+                    background: '#fef2f2', 
+                    color: '#dc2626', 
+                    padding: '12px 16px', 
+                    borderRadius: '10px', 
+                    fontSize: '14px', 
+                    fontWeight: '600',
+                    marginBottom: '20px',
+                    border: '1px solid #fee2e2',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px'
+                }}>
+                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#dc2626' }} />
+                    {error}
+                </div>
+            )}
 
             <form onSubmit={handleSubmit}>
                 <div className="form-group">

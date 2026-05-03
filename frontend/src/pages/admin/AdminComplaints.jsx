@@ -64,7 +64,7 @@ export default function AdminComplaints() {
         // Start a try block to handle potential errors during the resolution process
         try {
             // Await the response from the resolveComplaint API call, passing the id and resolution notes
-            await resolveComplaint(id, { resolutionNotes: resolveNotes });
+            await resolveComplaint(id, resolveNotes);
             // Display a success toast notification if the API call succeeds
             toast.success('Complaint resolved successfully!');
             // Reset the resolvingId state to null to close the resolution input UI
